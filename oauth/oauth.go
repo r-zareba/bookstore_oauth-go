@@ -2,9 +2,10 @@ package oauth
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/mercadolibre/golang-restclient/rest"
-	"github.com/r-zareba/bookstore_oauth-go/oauth/errors"
+	"github.com/r-zareba/bookstore_utils-go/rest_errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -62,7 +63,7 @@ func GetClientId(request *http.Request) int64 {
 	return callerId
 }
 
-func AuthenticateRequest(request *http.Request) *errors.RestError {
+func AuthenticateRequest(request *http.Request) *rest_errors.RestError {
 	if request == nil {
 		return nil
 	}
@@ -93,18 +94,20 @@ func cleanRequest(request *http.Request) {
 	request.Header.Del(headerXCallerId)
 }
 
-func getAccessToken(accessTokenId string) (*accessToken, *errors.RestError) {
+func getAccessToken(accessTokenId string) (*accessToken, *rest_errors.RestError) {
 
 	response := oAuthRestClient.Get(fmt.Sprintf("/oauth/access_token/%s", accessTokenId))
 	if response == nil || response.Response == nil {
-		return nil, errors.InternalServerError("Invalid Rest client response when trying to login user")
+		return nil, rest_errors.InternalServerError("Invalid Rest client response when trying to login user",
+			errors.New("invalid response err"))
 	}
 
 	if response.StatusCode > 299 {
-		var restErr errors.RestError
+		var restErr rest_errors.RestError
 		err := json.Unmarshal(response.Bytes(), &restErr)
 		if err != nil {
-			return nil, errors.InternalServerError("Invalid error interface when trying to login user")
+			return nil, rest_errors.InternalServerError("Invalid error interface when trying to login user",
+				errors.New("invalid response err"))
 		}
 		return nil, &restErr
 	}
@@ -113,7 +116,8 @@ func getAccessToken(accessTokenId string) (*accessToken, *errors.RestError) {
 	var at accessToken
 	err := json.Unmarshal(response.Bytes(), &at)
 	if err != nil {
-		return nil, errors.InternalServerError("Error when trying to unmarshal users response")
+		return nil, rest_errors.InternalServerError("Error when trying to unmarshal users response",
+			errors.New("invalid response err"))
 	}
 	return &at, nil
 }
